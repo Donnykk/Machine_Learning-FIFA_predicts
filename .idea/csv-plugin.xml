@@ -3,28 +3,28 @@
   <component name="CsvFileAttributes">
     <option name="attributeMap">
       <map>
-        <entry key="\defender.csv">
+        <entry key="\data\2000-01.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />
             </Attribute>
           </value>
         </entry>
-        <entry key="\forward.csv">
+        <entry key="\data\2003-04.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />
             </Attribute>
           </value>
         </entry>
-        <entry key="\goalkeeper.csv">
+        <entry key="\data\2004-05.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />
             </Attribute>
           </value>
         </entry>
-        <entry key="\midfielder.csv">
+        <entry key="\data\2005-06.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />

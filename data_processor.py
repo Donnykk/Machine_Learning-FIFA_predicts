@@ -2,6 +2,7 @@ import os
 import warnings
 
 import matplotlib as mpl
+import numpy as np
 import pandas as pd
 from sklearn.preprocessing import scale
 
@@ -26,6 +27,7 @@ time_list = [file_list[i][0:4] for i in range(len(file_list))]
 # read in data
 for i in range(len(res)):
     res[i] = pd.read_csv(path + file_list[i], encoding='ISO-8859-1', on_bad_lines='skip')
+
 
 # data process
 for i in range(len(res), 0, -1):
@@ -212,6 +214,8 @@ playing_stat.drop(['HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'MW'], 1, inplace=Tru
 n_matches = playing_stat.shape[0]
 n_home_wins = len(playing_stat[playing_stat.FTR == 'H'])
 win_rate = (float(n_home_wins) / n_matches) * 100
+
+
 # print("home win rate: {:.2f}%".format(win_rate))
 
 
@@ -259,4 +263,3 @@ def preprocess_features(X):
 
 
 X_all = preprocess_features(X_all)
-

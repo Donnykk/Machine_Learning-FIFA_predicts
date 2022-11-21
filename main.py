@@ -1,15 +1,16 @@
+from datetime import datetime
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import xgboost as xgb
 from time import time
+from sklearn import metrics
 from matplotlib import pyplot as plt
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 from tensorflow import keras
-
 import data_processor
 import os
 
@@ -61,7 +62,7 @@ hm = sns.heatmap(
 X_train, X_test, y_train, y_test = train_test_split(
     data_processor.X_all,
     data_processor.y_all,
-    test_size=0.5,
+    test_size=0.2,
     random_state=42,
     stratify=data_processor.y_all,
 )
@@ -114,7 +115,7 @@ model = keras.Sequential(
     [
         keras.layers.Input(shape=(22,), name="input"),
         keras.layers.Dense(64, activation="relu"),
-        keras.layers.Dense(16, activation="relu"),
+        keras.layers.Dense(32, activation="relu"),
         keras.layers.Dense(1, activation="sigmoid"),
     ]
 )
@@ -125,10 +126,64 @@ model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy']
 
 print("train {} model，sample number {}。".format(model.__class__.__name__, len(X_train)))
 
+# Set up filepath for model
+model_file_path = os.path.abspath(os.path.join("data", "model"))
+
+
+# Helper function
+def get_run_logdir():
+    root_logdir = os.path.join(os.curdir, "data", "logs")
+    run_id = datetime.now().strftime('run_%Y_%m_%d-%H_%M_%S')
+    run_log_dir = os.path.join(root_logdir, run_id)
+    return run_log_dir
+
+
+# Get a file path to where to store log data
+run_logdir = get_run_logdir()
+
+# Set up a checkpoint that saves the best model parameters so far during training
+checkpoint_cb = keras.callbacks.ModelCheckpoint(model_file_path)
+
+# Set up a callback for early stopping (which stops the training when the model stops becoming better)
+early_stopping_cb = keras.callbacks.EarlyStopping(patience=100, restore_best_weights=True)
+
+# Set up a callback for tensorboard which can be used for visualisation
+tensorboard_cb = keras.callbacks.TensorBoard(run_logdir)
+
 start = time()
-model.fit(X_train, y_train)
+history = model.fit(X_train, y_train,
+                    epochs=500,
+                    validation_split=0.2,
+                    callbacks=[checkpoint_cb, early_stopping_cb, tensorboard_cb])
 end = time()
 print("training time {:.4f} s".format(end - start))
 
-score_train = model.evaluate(X_train, y_train)
-score_test = model.evaluate(X_test, y_test)
+# Roll back the best model
+model = keras.models.load_model(model_file_path)
+
+# Predictions for training set
+y_train_predict_temp = model.predict(X_train)
+y_train_predict = []
+for i in range(len(y_train_predict_temp)):
+    if y_train_predict_temp[i] >= 0.5:
+        y_train_predict.append(1)
+    else:
+        y_train_predict.append(0)
+
+# Predictions for test set
+y_test_predict_temp = model.predict(X_test)
+y_test_predict = []
+for i in range(len(y_test_predict_temp)):
+    if y_test_predict_temp[i] >= 0.5:
+        y_test_predict.append(1)
+    else:
+        y_test_predict.append(0)
+
+# Metrics of the model
+f1_score_train = metrics.f1_score(y_train, y_train_predict).round(2)
+f1_score_test = metrics.f1_score(y_test, y_test_predict).round(2)
+acc_train = metrics.accuracy_score(y_train, y_train_predict).round(2)
+acc_test = metrics.accuracy_score(y_test, y_test_predict).round(2)
+
+print("F1 score and accuracy on training set: {:.4f} , {:.4f}".format(f1_score_train, acc_train))
+print("F1 score and accuracy on testing set: {:.4f} , {:.4f}".format(f1_score_test, acc_test))

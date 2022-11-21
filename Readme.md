@@ -345,12 +345,52 @@ Now I've got training data and test data prepared, let's introduce the machine l
         [
             keras.layers.Input(shape=(22,), name="input"),
             keras.layers.Dense(64, activation="relu"),
-            keras.layers.Dense(16, activation="relu"),
+            keras.layers.Dense(32, activation="relu"),
             keras.layers.Dense(1, activation="sigmoid"),
         ]
     )
+    # print the model summary
+    model.summary()
 
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    print("train {} model，sample number {}。".format(model.__class__.__name__, len(X_train)))
+
+    # Set up filepath for model
+    model_file_path = os.path.abspath(os.path.join("data", "model"))
+
+
+    # Helper function
+    def get_run_logdir():
+        root_logdir = os.path.join(os.curdir, "data", "logs")
+        run_id = datetime.now().strftime('run_%Y_%m_%d-%H_%M_%S')
+        run_log_dir = os.path.join(root_logdir, run_id)
+        return run_log_dir
+
+
+    # Get a file path to where to store log data
+    run_logdir = get_run_logdir()
+
+    # Set up a checkpoint that saves the best model parameters so far during training
+    checkpoint_cb = keras.callbacks.ModelCheckpoint(model_file_path)
+
+    # Set up a callback for early stopping (which stops the training when the model stops becoming better)
+    early_stopping_cb = keras.callbacks.EarlyStopping(patience=50, restore_best_weights=True)
+
+    # Set up a callback for tensorboard which can be used for visualisation
+    tensorboard_cb = keras.callbacks.TensorBoard(run_logdir)
+
+    start = time()
+    history = model.fit(X_train, y_train,
+                        epochs=500,
+                        validation_split=0.2,
+                        callbacks=[checkpoint_cb, early_stopping_cb, tensorboard_cb])
+    end = time()
+    print("training time {:.4f} s".format(end - start))
+
+    # Roll back the best model
+    model = keras.models.load_model(model_file_path)
+
     ```
 
 ## 5. Evaluation of Models ##
@@ -380,18 +420,35 @@ I used `F1 score` and `accuracy` to evaluate the performance of the model, and c
         predicting time in 0.0040 s
         F1 score and accuracy on testing set: 0.5695 , 0.6167
 
-        train Sequential model，sample number 2450。
-        77/77 [==============================] - 0s 763us/step - loss: 0.9696 - accuracy: 0.5849
-        training time 0.5747 s
-        77/77 [==============================] - 0s 579us/step - loss: 0.6364 - accuracy: 0.6351
-        77/77 [==============================] - 0s 579us/step - loss: 0.6380 - accuracy: 0.6343
+        _________________________________________________________________
+        train Sequential model，sample number 2450
+        98/98 [====================] - 0s 5ms/step - loss: 0.4733 - accuracy: 0.7819 - val_loss: 0.6873 - val_accuracy: 0.6505
+        Epoch 48/500
+        98/98 [====================] - 0s 5ms/step - loss: 0.4728 - accuracy: 0.7816 - val_loss: 0.6991 - val_accuracy: 0.6467
+        Epoch 49/500
+        98/98 [====================] - 1s 6ms/step - loss: 0.4686 - accuracy: 0.7838 - val_loss: 0.7258 - val_accuracy: 0.6237
+        Epoch 50/500
+        98/98 [====================] - 0s 5ms/step - loss: 0.4695 - accuracy: 0.7816 - val_loss: 0.6931 - val_accuracy: 0.6518
+        Epoch 51/500
+        98/98 [====================] - 0s 5ms/step - loss: 0.4604 - accuracy: 0.7927 - val_loss: 0.7030 - val_accuracy: 0.6429
+        Epoch 52/500
+        98/98 [====================] - 0s 5ms/step - loss: 0.4569 - accuracy: 0.7883 - val_loss: 0.7050 - val_accuracy: 0.6467
+        Epoch 53/500
+        98/98 [====================] - 0s 5ms/step - loss: 0.4571 - accuracy: 0.7937 - val_loss: 0.7070 - val_accuracy: 0.6378
+        training time 26.2196 s
+        123/123 [==================] - 0s 516us/step
+        31/31 [====================] - 0s 467us/step
+        F1 score and accuracy on training set: 0.7500 , 0.7700
+        F1 score and accuracy on testing set: 0.5800 , 0.6200
 
 According to the metrics above, it is obvious that the machine learning model I built did not achieve ideal results. Only XGBClassifier model reached a prediction accuracy and F1 score of 0.9+, but the training and predicting time of the XGBClassifier model was not as ideal as LogisticRegression. The worst model turns out to be Support Vector Machine. It only got a F1 score of 0.6141 and accuracy of 0.6624, which are both lower than I expected. Moreover, the training and predicting time of SVC are longer than other models, especially the prediction time, which shows its poor performance compared with other models.
 
 Let's focus on the deep learning models, we can see that my BP neural network also did not achieve an expected prediction accuracy, and the training time was not good compared to LogisticRegression either.
 
 Then I tried to modify the hyper parameters to get a better result. I tried serveral different value of the parameter `random_state` and `seed`, but there is no obvious effect on the results, which fluctuated around the results above.
-So I pick the relatively better hyper parameters: `random_state = 42` and `seed = 20`, here's the results:
+So I pick the relatively better hyper parameters: `random_state = 42` and `seed = 20`
+
+* Here's the results:
 
         train LogisticRegression model，sample number 2450。
         training time 0.0130 s
@@ -415,11 +472,30 @@ So I pick the relatively better hyper parameters: `random_state = 42` and `seed 
         F1 score and accuracy on testing set: 0.5629 , 0.6114
 
         _________________________________________________________________
-        train Sequential model，sample number 2450。
-        77/77 [==============================] - 0s 737us/step - loss: 0.6668 - accuracy: 0.5841
-        training time 0.5769 s
-        77/77 [==============================] - 0s 605us/step - loss: 0.6306 - accuracy: 0.6420
-        77/77 [==============================] - 0s 618us/step - loss: 0.6247 - accuracy: 0.6543
+        train Sequential model，sample number 2450
+        Epoch 98/500
+        98/98 [=====================] - 0s 5ms/step - loss: 0.3330 - accuracy: 0.8549 - val_loss: 0.9117 - val_accuracy: 0.5829
+        Epoch 99/500
+        98/98 [=====================] - 0s 5ms/step - loss: 0.3334 - accuracy: 0.8536 - val_loss: 0.9017 - val_accuracy: 0.5714
+        Epoch 100/500
+        98/98 [=====================] - 0s 5ms/step - loss: 0.3325 - accuracy: 0.8658 - val_loss: 0.9022 - val_accuracy: 0.5880
+        Epoch 101/500
+        98/98 [=====================] - 1s 6ms/step - loss: 0.3285 - accuracy: 0.8575 - val_loss: 0.9342 - val_accuracy: 0.5599
+        Epoch 102/500
+        98/98 [=====================] - 0s 5ms/step - loss: 0.3306 - accuracy: 0.8587 - val_loss: 0.9204 - val_accuracy: 0.5791
+        Epoch 103/500
+        98/98 [=====================] - 0s 5ms/step - loss: 0.3272 - accuracy: 0.8578 - val_loss: 0.9157 - val_accuracy: 0.5829
+        Epoch 104/500
+        98/98 [=====================] - 0s 5ms/step - loss: 0.3237 - accuracy: 0.8619 - val_loss: 0.9330 - val_accuracy: 0.5957
+        training time 50.1932 s
+        123/123 [==============================] - 0s 484us/step
+        31/31 [==============================] - 0s 500us/step
+        F1 score and accuracy on training set: 0.8100 , 0.8200
+        F1 score and accuracy on testing set: 0.5700 , 0.6000
+
+We can see that my BP neural network also did not achieve an expected prediction accuracy. Although the F1 score and accuracy on training set reached 0.8+ and seem to have the potential to increase more , the F1 score and accuracy on testing set is still dissatisfying, almost as bad as SVC and Logistic Regression. What’s important is this model is way more timing-wasting than other machine-learning models.
+
+
 
 ## 6. Conclusion ## 
 
